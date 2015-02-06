@@ -3,6 +3,7 @@
 #include "stdlib.h"
 #include "stdio.h"
 
+#define DEBUG
 #define SIZE 256
 #define MARK -1
 
@@ -21,17 +22,17 @@ int compare(const Node ** left, const Node ** right)
 	return ((*left)->val < (*right)->val) - ((*left)->val > (*right)->val);
 }
 void build_tree(Node** sorted, int len) {}
-void get_codes(code** arg_codes, Node** leaves)
+void get_codes(code* arg_codes, Node** leaves)
 {
 	int i = 0;
 	Node * current, * upper;
-	code* codes = *arg_codes;
+	code* codes = arg_codes;
 	for(; i < SIZE; i++)
 	{
 		codes[i].len = 0;
 		codes[i].seq = 0;
 		current = leaves[i];
-		while(current->up)
+		while(current->up != NULL)
 		{
 			upper = current->up;
 			if(upper->one == current)
@@ -42,7 +43,11 @@ void get_codes(code** arg_codes, Node** leaves)
 			{
 				codes[i].seq = codes[i].seq << 1;
 			}
-			else abort();
+			//something goes wrong
+			if(upper->one != current && upper->zero != current)
+			{
+				abort();
+			}
 			current = current->up;
 		}
 	}
@@ -62,10 +67,12 @@ int main(int argc, char* argv[])
 		{
 			freq[c]++;
 		}
+#ifdef DEBUG
 	for (i = 0; i < SIZE; i++)
 	{
 		printf("%x ", freq[i]);
 	}
+#endif
 	for(i = 0; i < SIZE; i++)
 	{
 		current = malloc(sizeof(Node));
@@ -75,40 +82,48 @@ int main(int argc, char* argv[])
 		current->letter = i;
 		leaves[i] = nodes[i] = current;
 	}
+#ifdef DEBUG
 	for(i = 0; i < SIZE; i++)
 	{
 		printf("%d ", nodes[i]->val);
 	}
-	printf("Sorted Nodes: ");
+#endif
 	qsort(nodes, SIZE, sizeof(Node_p), compare);
+#ifdef DEBUG
+	printf("\nSorted Nodes: \n");
 	for(i = 0; i < SIZE; i++)
 	{
 		printf("%d ", nodes[i]->val);
 	}
+#endif
 	j = SIZE;
 	while(j != 1)
 	{
 		--j;
+		//possibly wrong & operator
 		if(j>=2)
 			qsort(&nodes[j-2], 3, sizeof(Node_p), compare);
 		current = malloc(sizeof(Node));
-		nodes[j-1]->up = nodes[j]->up = current;
+		nodes[j-1]->up = current;
+		nodes[j]->up = current;
 		current->val = nodes[j]->val + nodes[j-1]->val;
 		current->zero = nodes[j-1];
 		current->one = nodes[j];
 		nodes[j-1] = current;
 		nodes[j]->val = MARK;
 	}
-	nodes[j]->up = NULL;
-	printf("Sorted Nodes: ");
+	// this is a root node
+	nodes[0]->up = NULL;
+	printf("\nSorted Nodes: \n");
 	for(i = 0; i < SIZE; i++)
 	{
 		printf("%d ", nodes[i]->val);
 	}
-	get_codes(&codes, leaves);
+	get_codes((code**) &codes, leaves);
+	printf("\nCodes: \n");
 	for(i = 0; i < SIZE; i++)
 	{
-		printf("%d ", codes[i].seq);
+		printf("%x ", codes[i].seq);
 	}
 
 	return 0;
