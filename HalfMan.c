@@ -15,13 +15,25 @@ typedef struct {
 } Node;
 typedef struct {
 	int len;
-	unsigned int seq;
+	unsigned long long int seq; //try to add array of long [8]
 } code;
 int compare(const Node ** left, const Node ** right)
 {
 	return ((*left)->val < (*right)->val) - ((*left)->val > (*right)->val);
 }
 void build_tree(Node** sorted, int len) {}
+void Free_Tree(Node** this_node)
+{
+	if(!this_node || !(*this_node))
+		return;
+	if((*this_node)->one)
+		Free_Tree(&((*this_node)->one) );
+	if((*this_node)->zero)
+		Free_Tree(&((*this_node)->zero) );
+	if (this_node)
+		free(*this_node);
+	*this_node = NULL;
+}
 void get_inv_codes(code* arg_codes, Node** leaves)
 {
 	int i = 0;
@@ -80,7 +92,7 @@ int main(int argc, char* argv[])
 		current = malloc(sizeof(Node));
 		current->up = NULL;
 		current->one = current->zero = NULL;
-		current->val = freq[i];
+		current->val = freq[i] + 1; // this is to add randomization in tree
 		current->letter = i;
 		leaves[i] = nodes[i] = current;
 	}
@@ -139,6 +151,7 @@ int main(int argc, char* argv[])
 	}
 	printf("\n%i \n", sizeof(codes[i].seq));
 
+	Free_Tree(&(nodes[0]));
 	return 0;
 }
 
