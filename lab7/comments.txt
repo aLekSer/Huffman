@@ -1,0 +1,23 @@
+Типы должны быть выровнены по границе, кратной их размерам
+Лучше вместо паддинга использовать массив char'ов и передавать его по сети потом или в файл, а в памяти нужно хранить уже с паддингом, работает быстрее
+Доступ к невыровненным типам - undefined behaviour
+
+assigning a structure to another structure - реализован с помощью memcpy
+for comparing memcmp is used, so to compare we need zeroes in padded free space;
+
+struct t{
+  int a;
+} i;
+
+i = {0};
+struct t * pi;
+
+*pi = i //assigment
+
+char, unsigned char и signed char - несовместимые типы, implementation defined behaviour
+
+Напр, в strlen передавать unsigned char [20];
+
+%g можно переопределить в libc определить handler
+или использовать API gdb
+
