@@ -1,0 +1,41 @@
+Work with memory in C
+
+brk, sbrk seems to be deprecated
+
+mmap ask for virtual address memory
+read computer architecture to understand division into pages
+#include <sys/mman.h>
+
+alloca выделяет память быстро на стеке, но она не выдает ошибку, если вылезла за stack limit. Можно использовать, если есть большая уверенность и тем больше потом удар по самооценке, в случае если программа накроется
+
+int mallopt(int param, int value)
+//malloc  options
+
+man mallopt
+
+решить переносить или нет - нужна ли портабельность, будет ли работать с другими версиями линукса
+
+how to find memory leaks 
+
+strace helps to find open descriptors
+valgrind help to find mem leaks
+утечки и invalid access надо отслеживать
+
+double free leads to heap corruption
+p is a dungling pointer after free(p)
+
+malloc(0) is bad
+
+calloc(m, n) vs malloc + memset()
+
+malloc could use mmap with zero region. Zeroing is for security sake.
+
+<string.h> man string to see what func to use
+strcpy может вызвать переполнение буфера
+dest[BUF_SIZE - 1] = 0; //strlcpy approach
+
+strncpy(dest, source, BUF_SIZE - 1);
+
+
+
+
