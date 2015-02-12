@@ -36,6 +36,8 @@ dest[BUF_SIZE - 1] = 0; //strlcpy approach
 
 strncpy(dest, source, BUF_SIZE - 1);
 
+#undef gets and getwd
 
-
+Отличие между char* = "a"// ссылка на read-only memory
+и char s [] = "a" // инициализатор, а массив хранится на стеке
 
