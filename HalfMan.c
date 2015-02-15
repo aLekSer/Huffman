@@ -2,6 +2,7 @@
 //
 #include "stdlib.h"
 #include "stdio.h"
+#include <stdint.h>
 
 #define DEBUG
 #define SIZE 256
@@ -15,8 +16,50 @@ typedef struct {
 } Node;
 typedef struct {
 	int len;
-	unsigned long long int seq; //try to add array of long [8]
+	uint64_t seq; //try to add array of long [8]
 } code;
+
+void append_file( FILE * write, FILE * read , code* codes) 
+{
+	int i = 0;
+	uint64_t bits = 0;
+	uint64_t mask = 1;
+	int pointer = 0;
+	char c = '\0';
+	char buf[256];
+	if (!(read && write))
+		abort();
+	while((c=fgetc(read)) != EOF)
+	{
+		mask = 1;
+		for (i = 0; i < codes[c].len; bits++, i++)
+		{
+			if((bits%8) == 0)
+			{
+				pointer++;
+			}
+			buf[pointer] = buf[pointer] << 1;
+			if(codes[c].seq & mask)
+			{ 
+				buf[pointer] = buf[pointer] | 1;
+			}
+			mask << 1;
+		}
+
+	}
+	printf("Hi there!\n");
+}
+
+typedef struct {
+	int up, one, zero;
+	int val;
+	char letter;
+} element;
+void write_file( FILE * write, element* prefix, uint64_t file_size ) 
+{
+	return;
+}
+
 int compare(const Node ** left, const Node ** right)
 {
 	return ((*left)->val < (*right)->val) - ((*left)->val > (*right)->val);
@@ -65,21 +108,50 @@ void get_inv_codes(code* arg_codes, Node** leaves)
 		}
 	}
 }
+int idx = 0;
+//NULL pointer will be -1 index in array
+int put_to_array(element * prefix, Node * root, int up)
+{
+	int pos = idx;
+	idx++;
+	prefix[pos].val = root->val;
+	prefix[pos].letter = root->letter;
+	prefix[pos].up = up;
+		
+	if(root->zero != NULL)
+	{
+		prefix[pos].zero = 
+		  put_to_array(prefix, root->zero, pos);
+	}
+	else 
+		prefix[pos].zero = -1;
+	if(root->one != NULL)
+	{
+		prefix[pos].one = put_to_array(prefix, root->one, pos);
+	}
+	else 
+		prefix[pos].one = -1;
+	return pos;
+}
 int main(int argc, char* argv[])
 {
-	FILE * read;
+	FILE * read, * write,  *write_dec;
 	char c;
 	int i , j, total;
 	int freq[SIZE] = {0};
 	Node *nodes[SIZE], *leaves[SIZE];
 	code codes[SIZE] = {0};
+	uint64_t file_size = 0;
+	element prefix[2 * SIZE] = {0};
 	int set = 0;
 	Node * current = NULL;
 	read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "r");
+	write = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Encode.txt", "w");
+	write_dec = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Decode.txt", "w");
 	if(read)
 		while((c=fgetc(read)) != EOF)
 		{
-			freq[c]++;
+			freq[c]++; file_size++;
 		}
 #ifdef DEBUG
 	for (i = 0; i < SIZE; i++)
@@ -92,7 +164,7 @@ int main(int argc, char* argv[])
 		current = malloc(sizeof(Node));
 		current->up = NULL;
 		current->one = current->zero = NULL;
-		current->val = freq[i] + 1; // this is to add randomization in tree
+		current->val = freq[i]; // this is to add randomization in tree
 		current->letter = i;
 		leaves[i] = nodes[i] = current;
 	}
@@ -138,12 +210,16 @@ int main(int argc, char* argv[])
 	}
 	// this is a root node
 	nodes[0]->up = NULL;
+	put_to_array(prefix, nodes[0], 0, -1);
 	printf("\nSorted Nodes: \n");
 	for(i = 0; i < SIZE; i++)
 	{
 		printf("%d ", nodes[i]->val);
 	}
 	get_inv_codes((code**) &codes, leaves);
+	write_file(write, prefix, file_size);
+	read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "r");
+	append_file(write, read, codes);
 	printf("\nCodes: \n");
 	for(i = 0; i < SIZE; i++)
 	{
