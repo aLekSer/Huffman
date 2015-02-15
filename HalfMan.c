@@ -3,6 +3,7 @@
 #include "stdlib.h"
 #include "stdio.h"
 #include <stdint.h>
+#include <assert.h>
 
 #define DEBUG
 #define SIZE 256
@@ -24,9 +25,9 @@ void append_file( FILE * write, FILE * read , code* codes)
 	int i = 0;
 	uint64_t bits = 0;
 	uint64_t mask = 1;
-	int pointer = 0;
+	int pointer = -1;
 	char c = '\0';
-	char buf[256];
+	unsigned char buf[4] = {0};
 	if (!(read && write))
 		abort();
 	while((c=fgetc(read)) != EOF)
@@ -38,16 +39,20 @@ void append_file( FILE * write, FILE * read , code* codes)
 			{
 				pointer++;
 			}
-			buf[pointer] = buf[pointer] << 1;
 			if(codes[c].seq & mask)
-			{ 
+			{
 				buf[pointer] = buf[pointer] | 1;
 			}
+			buf[pointer] = buf[pointer] << 1;
 			mask << 1;
 		}
-
+	}
+	for (i = 0; i < pointer; i ++)
+	{
+		fputc(buf[i], write);
 	}
 	printf("Hi there!\n");
+	fclose(write);
 }
 
 typedef struct {
@@ -55,10 +60,6 @@ typedef struct {
 	int val;
 	char letter;
 } element;
-void write_file( FILE * write, element* prefix, uint64_t file_size ) 
-{
-	return;
-}
 
 int compare(const Node ** left, const Node ** right)
 {
@@ -109,6 +110,54 @@ void get_inv_codes(code* arg_codes, Node** leaves)
 	}
 }
 int idx = 0;
+void write_file( FILE * write, element* prefix, uint64_t file_size ) 
+{
+	fwrite(&file_size, sizeof(file_size), 1, write);
+	fwrite(&idx, sizeof(idx), 1, write);
+	fwrite(prefix, sizeof(element), idx, write);
+	return;
+}
+void read_prefix( FILE * write, element* tree, int* tree_size, uint64_t* file_size ) 
+{
+	fread(file_size, sizeof(*file_size), 1, write);
+	fread(tree_size, sizeof(*tree_size), 1, write);
+	fread(tree, sizeof(element), *tree_size, write);
+	return;
+}
+
+void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded) 
+{
+	char c = '\0';
+	int mask = 1;
+	char buf[10];
+	int buf_idx = 0;
+	int i = 0;
+	int pos = 0;
+	assert(tree[0].up == -1);
+	while (c = fgetc(encoded) != EOF)
+	{
+		mask = 1;
+		for (i = 0; i <8; i++)
+		{
+			if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
+			{
+				buf[buf_idx++] = tree[pos].letter;
+			}
+			if (c & mask) // == 1
+			{
+				pos = tree[pos].one;
+			}
+			else
+			{
+				pos = tree[pos].zero;
+			}
+			assert(pos != -1);
+		}
+	}
+	fwrite(buf, sizeof(char), buf_idx, decoded);
+
+}
+
 //NULL pointer will be -1 index in array
 int put_to_array(element * prefix, Node * root, int up)
 {
@@ -143,6 +192,9 @@ int main(int argc, char* argv[])
 	code codes[SIZE] = {0};
 	uint64_t file_size = 0;
 	element prefix[2 * SIZE] = {0};
+	element dprefix[2 * SIZE] = {0};
+	//element* tree = NULL; // possibly do malloc while decoding
+	size_t tree_size = 0;
 	int set = 0;
 	Node * current = NULL;
 	read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "r");
@@ -210,7 +262,7 @@ int main(int argc, char* argv[])
 	}
 	// this is a root node
 	nodes[0]->up = NULL;
-	put_to_array(prefix, nodes[0], 0, -1);
+	put_to_array(prefix, nodes[0], -1);
 	printf("\nSorted Nodes: \n");
 	for(i = 0; i < SIZE; i++)
 	{
@@ -220,10 +272,13 @@ int main(int argc, char* argv[])
 	write_file(write, prefix, file_size);
 	read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "r");
 	append_file(write, read, codes);
+	write = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Encode.txt", "r");
+	read_prefix(write, dprefix, &tree_size, & file_size);
+	decode(write, dprefix, tree_size, write_dec);
 	printf("\nCodes: \n");
 	for(i = 0; i < SIZE; i++)
 	{
-		printf("s%d %x ", codes[i].len, codes[i].seq);
+		printf("%c s %d %x ",(char) i, codes[i].len, codes[i].seq);
 	}
 	printf("\n%i \n", sizeof(codes[i].seq));
 
