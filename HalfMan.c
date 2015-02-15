@@ -47,7 +47,7 @@ void append_file( FILE * write, FILE * read , code* codes)
 			mask << 1;
 		}
 	}
-	for (i = 0; i < pointer; i ++)
+	for (i = 0; i < pointer+1; i ++)
 	{
 		fputc(buf[i], write);
 	}
@@ -134,7 +134,7 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded)
 	int i = 0;
 	int pos = 0;
 	assert(tree[0].up == -1);
-	while (c = fgetc(encoded) != EOF)
+	while ((c = fgetc(encoded)) != EOF)
 	{
 		mask = 1;
 		for (i = 0; i <8; i++)
@@ -142,6 +142,7 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded)
 			if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
 			{
 				buf[buf_idx++] = tree[pos].letter;
+				pos = 0;
 			}
 			if (c & mask) // == 1
 			{
@@ -152,9 +153,11 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded)
 				pos = tree[pos].zero;
 			}
 			assert(pos != -1);
+			mask << 1;
 		}
 	}
 	fwrite(buf, sizeof(char), buf_idx, decoded);
+	fclose(decoded);
 
 }
 
@@ -278,7 +281,8 @@ int main(int argc, char* argv[])
 	printf("\nCodes: \n");
 	for(i = 0; i < SIZE; i++)
 	{
-		printf("%c s %d %x ",(char) i, codes[i].len, codes[i].seq);
+		if (codes[i].len != 0)
+			printf("%c s %d %x ",(char) i, codes[i].len, codes[i].seq);
 	}
 	printf("\n%i \n", sizeof(codes[i].seq));
 
