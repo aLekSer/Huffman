@@ -4,6 +4,7 @@
 #include "stdio.h"
 #include <stdint.h>
 #include <assert.h>
+#include <string.h>
 
 #define DEBUG
 #define SIZE 256
@@ -20,6 +21,7 @@ typedef struct {
 	uint64_t seq; //try to add array of long [8]
 } code;
 
+//encode file
 void append_file( FILE * write, FILE * read , code* codes) 
 {
 	int i = 0;
@@ -27,31 +29,36 @@ void append_file( FILE * write, FILE * read , code* codes)
 	uint64_t mask = 1;
 	int pointer = -1;
 	char c = '\0';
-	unsigned char buf[4] = {0};
+	unsigned char buf[SIZE] = {0};
 	if (!(read && write))
 		abort();
 	while((c=fgetc(read)) != EOF)
 	{
-		mask = 1;
-		for (i = 0; i < codes[c].len; bits++, i++)
+		mask = 1<<(codes[c].len - 1);
+		for (i = codes[c].len; i >= 0 ; bits++, i--)
 		{
 			if((bits%8) == 0)
 			{
 				pointer++;
+				if (pointer == SIZE)
+				{
+					fwrite(buf, sizeof(char), SIZE, write);
+					memset(buf, 0, SIZE);
+					pointer = 0;
+				}
 			}
 			if(codes[c].seq & mask)
 			{
 				buf[pointer] = buf[pointer] | 1;
 			}
 			buf[pointer] = buf[pointer] << 1;
-			mask << 1;
+			mask = mask >> 1;
 		}
 	}
 	for (i = 0; i < pointer+1; i ++)
 	{
 		fputc(buf[i], write);
 	}
-	printf("Hi there!\n");
 	fclose(write);
 }
 
@@ -125,23 +132,32 @@ void read_prefix( FILE * write, element* tree, int* tree_size, uint64_t* file_si
 	return;
 }
 
-void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded) 
+void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, int file_size) 
 {
 	char c = '\0';
 	int mask = 1;
-	char buf[10];
+	char buf[SIZE];
+	uint64_t total_read = 0;
 	int buf_idx = 0;
 	int i = 0;
 	int pos = 0;
 	assert(tree[0].up == -1);
 	while ((c = fgetc(encoded)) != EOF)
 	{
-		mask = 1;
+		mask = 1<<7;
 		for (i = 0; i <8; i++)
 		{
 			if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
 			{
 				buf[buf_idx++] = tree[pos].letter;
+				total_read++;
+				if(buf_idx == SIZE)
+				{
+					fwrite(buf, sizeof(char), SIZE, decoded);
+					buf_idx = 0;
+				}
+				if(total_read == file_size)
+					break;
 				pos = 0;
 			}
 			if (c & mask) // == 1
@@ -153,10 +169,17 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded)
 				pos = tree[pos].zero;
 			}
 			assert(pos != -1);
-			mask << 1;
+			mask = mask >> 1;
+		}
+		if(total_read == file_size)
+			break;
+		if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
+		{
+			buf[buf_idx++] = tree[pos].letter;
+			pos = 0;
 		}
 	}
-	fwrite(buf, sizeof(char), buf_idx, decoded);
+	fwrite(buf, sizeof(char), buf_idx-1, decoded);
 	fclose(decoded);
 
 }
@@ -277,7 +300,7 @@ int main(int argc, char* argv[])
 	append_file(write, read, codes);
 	write = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Encode.txt", "r");
 	read_prefix(write, dprefix, &tree_size, & file_size);
-	decode(write, dprefix, tree_size, write_dec);
+	decode(write, dprefix, tree_size, write_dec, file_size);
 	printf("\nCodes: \n");
 	for(i = 0; i < SIZE; i++)
 	{
