@@ -124,14 +124,15 @@ void write_file( FILE * write, element* prefix, uint64_t file_size )
 	fwrite(&file_size, sizeof(file_size), 1, write);
 	fwrite(&idx, sizeof(idx), 1, write);
 	fwrite(prefix, sizeof(element), idx, write);
-	return;
 }
-void read_prefix( FILE * write, element* tree, int* tree_size, uint64_t* file_size ) 
+void read_prefix( FILE * read_file, element* tree, int* tree_size, uint64_t* file_size ) 
 {
-	fread(file_size, sizeof(*file_size), 1, write);
-	fread(tree_size, sizeof(*tree_size), 1, write);
-	fread(tree, sizeof(element), *tree_size, write);
-	return;
+	int read_elements;
+	fread(file_size, sizeof(*file_size), 1, read_file);
+	fread(tree_size, sizeof(*tree_size), 1, read_file);
+	read_elements = fread(tree, sizeof(element), *tree_size, read_file);
+	fread(tree + read_elements, sizeof(element), *tree_size - read_elements, read_file);
+	printf("Totally read %d from %d\n", read_elements, *tree_size);
 }
 
 void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, int file_size) 
@@ -212,7 +213,7 @@ int put_to_array(element * prefix, Node * root, int up)
 }
 int main(int argc, char* argv[])
 {
-	FILE * read, * write,  *write_dec;
+	FILE * read, * write,  *write_dec, *read_enc;
 	char c;
 	int i , j, total;
 	int freq[SIZE] = {0};
@@ -225,9 +226,9 @@ int main(int argc, char* argv[])
 	size_t tree_size = 0;
 	int set = 0;
 	Node * current = NULL;
-	read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "r");
-	write = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Encode.txt", "w");
-	write_dec = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Decode.txt", "w");
+	read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "rb");
+	write = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Encode.txt", "wb");
+	write_dec = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Decode.txt", "wb");
 	if(read)
 		while((c=fgetc(read)) != EOF)
 		{
@@ -244,20 +245,21 @@ int main(int argc, char* argv[])
 		current = malloc(sizeof(Node));
 		current->up = NULL;
 		current->one = current->zero = NULL;
-		current->val = freq[i]; // this is to add randomization in tree
+		current->val = freq[i]; // this was to add randomization in tree
 		current->letter = i;
 		leaves[i] = nodes[i] = current;
 	}
+	qsort(nodes, SIZE, sizeof(Node_p), compare);
+
 #ifdef DEBUG
-	for(i = 0; i < SIZE; i++)
+	for(i = 0; i < file_size; i++)
 	{
 		printf("%d ", nodes[i]->val);
 	}
 #endif
-	qsort(nodes, SIZE, sizeof(Node_p), compare);
 #ifdef DEBUG
 	printf("\nSorted Nodes: \n");
-	for(i = 0; i < SIZE; i++)
+	for(i = 0; i < file_size; i++)
 	{
 		printf("%d ", nodes[i]->val);
 	}
@@ -298,11 +300,11 @@ int main(int argc, char* argv[])
 	}
 	get_inv_codes((code**) &codes, leaves);
 	write_file(write, prefix, file_size);
-	read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "r");
+	read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "rb");
 	append_file(write, read, codes);
-	write = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Encode.txt", "r");
-	read_prefix(write, dprefix, &tree_size, & file_size);
-	decode(write, dprefix, tree_size, write_dec, file_size);
+	read_enc = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Encode.txt", "rb");
+	read_prefix(read_enc, dprefix, &tree_size, & file_size);
+	decode(read_enc, dprefix, tree_size, write_dec, file_size);
 	printf("\nCodes: \n");
 	for(i = 0; i < SIZE; i++)
 	{
