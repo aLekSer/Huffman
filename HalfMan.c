@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <string.h>
 
-#define DEBUG
+#define DEB1UG
 #define SIZE 256
 #define MARK -1
 
@@ -131,8 +131,6 @@ void read_prefix( FILE * read_file, element* tree, int* tree_size, uint64_t* fil
 	fread(file_size, sizeof(*file_size), 1, read_file);
 	fread(tree_size, sizeof(*tree_size), 1, read_file);
 	read_elements = fread(tree, sizeof(element), *tree_size, read_file);
-	fread(tree + read_elements, sizeof(element), *tree_size - read_elements, read_file);
-	printf("Totally read %d from %d\n", read_elements, *tree_size);
 }
 
 void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, int file_size) 
@@ -150,11 +148,12 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, in
 		mask = 1<<7;
 		for (i = 0; i <8; i++)
 		{
+			assert(pos < tree_size);
 			if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
 			{
 				buf[buf_idx++] = tree[pos].letter;
 				total_read++;
-				if(buf_idx == SIZE)
+				if(buf_idx == (SIZE - 1)) //TODO check why on long file decode is not equal to enc
 				{
 					fwrite(buf, sizeof(char), SIZE, decoded);
 					buf_idx = 0;
@@ -178,13 +177,17 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, in
 			break;
 		if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
 		{
+			if(buf_idx == (SIZE - 1))
+			{
+				fwrite(buf, sizeof(char), SIZE, decoded);
+				buf_idx = 0;
+			}
 			buf[buf_idx++] = tree[pos].letter;
 			pos = 0;
 		}
 	}
 	fwrite(buf, sizeof(char), file_size % SIZE, decoded);
 	fclose(decoded);
-
 }
 
 //NULL pointer will be -1 index in array
