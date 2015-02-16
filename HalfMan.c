@@ -34,8 +34,8 @@ void append_file( FILE * write, FILE * read , code* codes)
 		abort();
 	while((c=fgetc(read)) != EOF)
 	{
-		mask = 1<<(codes[c].len - 1);
-		for (i = codes[c].len; i >= 0 ; bits++, i--)
+		mask = 1;
+		for (i = codes[c].len; i > 0 ; bits++, i--)
 		{
 			if((bits%8) == 0)
 			{
@@ -47,18 +47,20 @@ void append_file( FILE * write, FILE * read , code* codes)
 					pointer = 0;
 				}
 			}
+			buf[pointer] = buf[pointer] << 1;
 			if(codes[c].seq & mask)
 			{
 				buf[pointer] = buf[pointer] | 1;
 			}
-			buf[pointer] = buf[pointer] << 1;
-			mask = mask >> 1;
+			mask = mask << 1;
 		}
 	}
-	for (i = 0; i < pointer+1; i ++)
+	// for code to be complete and starts from MSB
+	if((bits%8) != 0)
 	{
-		fputc(buf[i], write);
+		buf[pointer] = buf[pointer]  << (8 - (bits%8));
 	}
+	fwrite(buf, sizeof(char), pointer+1, write);
 	fclose(write);
 }
 
@@ -179,7 +181,7 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, in
 			pos = 0;
 		}
 	}
-	fwrite(buf, sizeof(char), buf_idx-1, decoded);
+	fwrite(buf, sizeof(char), file_size % SIZE, decoded);
 	fclose(decoded);
 
 }
@@ -307,8 +309,6 @@ int main(int argc, char* argv[])
 		if (codes[i].len != 0)
 			printf("%c s %d %x ",(char) i, codes[i].len, codes[i].seq);
 	}
-	printf("\n%i \n", sizeof(codes[i].seq));
-
 	Free_Tree(&(nodes[0]));
 	return 0;
 }
