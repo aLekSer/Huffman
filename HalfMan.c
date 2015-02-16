@@ -21,29 +21,32 @@ typedef struct {
 	uint64_t seq; //try to add array of long [8]
 } code;
 
+#define BUF_SIZE 10240
 //encode file
-void append_file( FILE * write, FILE * read , code* codes) 
+void append_file( FILE * write, FILE * read , code* codes)
 {
 	int i = 0;
 	uint64_t bits = 0;
 	uint64_t mask = 1;
 	int pointer = -1;
-	char c = '\0';
-	unsigned char buf[SIZE] = {0};
+	unsigned int c = 0; //possibly source of error
+	int ui = 0;
+	char buf[BUF_SIZE] = {0};
 	if (!(read && write))
 		abort();
-	while((c=fgetc(read)) != EOF)
+	while((ui = fgetc(read)) != EOF)
 	{
+		c = (unsigned int) ui;
 		mask = 1;
 		for (i = codes[c].len; i > 0 ; bits++, i--)
 		{
 			if((bits%8) == 0)
 			{
 				pointer++;
-				if (pointer == SIZE)
+				if (pointer == BUF_SIZE)
 				{
-					fwrite(buf, sizeof(char), SIZE, write);
-					memset(buf, 0, SIZE);
+					fwrite(buf, sizeof(char), BUF_SIZE, write);
+					memset(buf, 0, BUF_SIZE);
 					pointer = 0;
 				}
 			}
@@ -65,8 +68,8 @@ void append_file( FILE * write, FILE * read , code* codes)
 }
 
 typedef struct {
-	int up, one, zero;
-	int val;
+	short int up, one, zero;
+	//int val;
 	char letter;
 } element;
 
@@ -119,13 +122,13 @@ void get_inv_codes(code* arg_codes, Node** leaves)
 	}
 }
 int idx = 0;
-void write_file( FILE * write, element* prefix, uint64_t file_size ) 
+void write_file( FILE * write, element* prefix, uint64_t file_size )
 {
 	fwrite(&file_size, sizeof(file_size), 1, write);
 	fwrite(&idx, sizeof(idx), 1, write);
 	fwrite(prefix, sizeof(element), idx, write);
 }
-void read_prefix( FILE * read_file, element* tree, int* tree_size, uint64_t* file_size ) 
+void read_prefix( FILE * read_file, element* tree, int* tree_size, uint64_t* file_size )
 {
 	int read_elements;
 	fread(file_size, sizeof(*file_size), 1, read_file);
@@ -133,18 +136,20 @@ void read_prefix( FILE * read_file, element* tree, int* tree_size, uint64_t* fil
 	read_elements = fread(tree, sizeof(element), *tree_size, read_file);
 }
 
-void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, int file_size) 
+void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, int file_size)
 {
-	char c = '\0';
+	int ui = 0;
+	unsigned int c = 0;
 	int mask = 1;
-	char buf[SIZE];
+	char buf[BUF_SIZE];
 	uint64_t total_read = 0;
 	int buf_idx = 0;
 	int i = 0;
 	int pos = 0;
 	assert(tree[0].up == -1);
-	while ((c = fgetc(encoded)) != EOF)
+	while ((ui = fgetc(encoded)) != EOF)
 	{
+		c = (unsigned int) ui;
 		mask = 1<<7;
 		for (i = 0; i <8; i++)
 		{
@@ -153,9 +158,9 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, in
 			{
 				buf[buf_idx++] = tree[pos].letter;
 				total_read++;
-				if(buf_idx == (SIZE - 1)) //TODO check why on long file decode is not equal to enc
+				if(buf_idx == BUF_SIZE) //TODO check why on long file decode is not equal to enc
 				{
-					fwrite(buf, sizeof(char), SIZE, decoded);
+					fwrite(buf, sizeof(char), BUF_SIZE, decoded);
 					buf_idx = 0;
 				}
 				if(total_read == file_size)
@@ -174,19 +179,22 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, in
 			mask = mask >> 1;
 		}
 		if(total_read == file_size)
-			break;
-		if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
 		{
-			if(buf_idx == (SIZE - 1))
+			/* this code seems to be unnecessary:
+			if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
 			{
-				fwrite(buf, sizeof(char), SIZE, decoded);
-				buf_idx = 0;
-			}
-			buf[buf_idx++] = tree[pos].letter;
-			pos = 0;
+				if(buf_idx == BUF_SIZE)
+				{
+					fwrite(buf, sizeof(char), BUF_SIZE, decoded);
+					buf_idx = 0;
+				}
+				buf[buf_idx++] = tree[pos].letter;
+				pos = 0;
+			} */
+			break;
 		}
 	}
-	fwrite(buf, sizeof(char), file_size % SIZE, decoded);
+	fwrite(buf, sizeof(char), file_size % BUF_SIZE, decoded);
 	fclose(decoded);
 }
 
@@ -195,31 +203,32 @@ int put_to_array(element * prefix, Node * root, int up)
 {
 	int pos = idx;
 	idx++;
-	prefix[pos].val = root->val;
 	prefix[pos].letter = root->letter;
 	prefix[pos].up = up;
-		
+
 	if(root->zero != NULL)
 	{
-		prefix[pos].zero = 
+		prefix[pos].zero =
 		  put_to_array(prefix, root->zero, pos);
 	}
-	else 
+	else
 		prefix[pos].zero = -1;
 	if(root->one != NULL)
 	{
 		prefix[pos].one = put_to_array(prefix, root->one, pos);
 	}
-	else 
+	else
 		prefix[pos].one = -1;
 	return pos;
 }
 int main(int argc, char* argv[])
 {
 	FILE * read, * write,  *write_dec, *read_enc;
-	char c;
-	int i , j, total;
+	int c;
+	int i , j; //, total;
 	int freq[SIZE] = {0};
+	int to_encode = 1;
+	unsigned int ui = 0;
 	Node *nodes[SIZE], *leaves[SIZE];
 	code codes[SIZE] = {0};
 	uint64_t file_size = 0;
@@ -229,13 +238,32 @@ int main(int argc, char* argv[])
 	size_t tree_size = 0;
 	int set = 0;
 	Node * current = NULL;
-	read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "rb");
-	write = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Encode.txt", "wb");
-	write_dec = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Decode.txt", "wb");
+    if(argc == 4)
+    {
+    	if (strcmp(argv[2], "-c") == 0)
+    	{
+    		to_encode = 1; //TRUE
+    	}
+    	if (strcmp(argv[2], "-x") == 0)
+    	{
+    		to_encode = 0; //FALSE
+    	}
+	    read = fopen(argv[1], "rb");
+	    write = fopen(argv[3], "wb");
+	    write_dec = fopen("Decode.txt", "wb");
+
+    }
+    else
+    {
+	    read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "rb");
+	    write = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Encode.txt", "wb");
+	    write_dec = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Decode.txt", "wb");
+    }
 	if(read)
 		while((c=fgetc(read)) != EOF)
 		{
-			freq[c]++; file_size++;
+			ui = (unsigned int) c;
+			freq[ui]++; file_size++;
 		}
 #ifdef DEBUG
 	for (i = 0; i < SIZE; i++)
@@ -303,9 +331,17 @@ int main(int argc, char* argv[])
 	}
 	get_inv_codes((code**) &codes, leaves);
 	write_file(write, prefix, file_size);
-	read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "rb");
+	if(argc == 4)
+	{
+		read = fopen(argv[1], "rb");
+		read_enc = fopen(argv[3], "rb");
+	}
+	else
+	{
+	    read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "rb");
+	    read_enc = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Encode.txt", "rb");
+	}
 	append_file(write, read, codes);
-	read_enc = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Encode.txt", "rb");
 	read_prefix(read_enc, dprefix, &tree_size, & file_size);
 	decode(read_enc, dprefix, tree_size, write_dec, file_size);
 	printf("\nCodes: \n");
