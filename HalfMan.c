@@ -21,7 +21,7 @@ typedef struct {
 	uint64_t seq; //try to add array of long [8]
 } code;
 
-#define BUF_SIZE 10240
+#define BUF_SIZE 8
 //encode file
 void append_file( FILE * write, FILE * read , code* codes)
 {
@@ -103,11 +103,11 @@ void get_inv_codes(code* arg_codes, Node** leaves)
 		while(current->up != NULL)
 		{
 			upper = current->up;
-			if(upper->one == current)
+			if(((Node *)upper->one)->letter == current->letter)
 			{
 				codes[i].seq = (codes[i].seq << 1) + 1;
 			}
-			if(upper->zero == current)
+			else if(((Node *)upper->zero)->letter == current->letter)
 			{
 				codes[i].seq = codes[i].seq << 1;
 			}
@@ -142,43 +142,49 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, in
 	unsigned int c = 0;
 	int mask = 1;
 	char buf[BUF_SIZE];
+	char read_buf[BUF_SIZE];
+	int readed;
 	uint64_t total_read = 0;
 	int buf_idx = 0;
-	int i = 0;
+	int i = 0, j = 0;
 	int pos = 0;
 	assert(tree[0].up == -1);
-	while ((ui = fgetc(encoded)) != EOF)
+	while (1)
 	{
-		c = (unsigned int) ui;
-		mask = 1<<7;
-		for (i = 0; i <8; i++)
+		readed = fread(read_buf, sizeof(char), BUF_SIZE, encoded);
+		for (j = 0; j < readed; j++)
 		{
-			assert(pos < tree_size);
-			if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
+			c = read_buf[j];
+			mask = 1<<7;
+			for (i = 0; i <8; i++)
 			{
-				buf[buf_idx++] = tree[pos].letter;
-				total_read++;
-				if(buf_idx == BUF_SIZE) //TODO check why on long file decode is not equal to enc
+				assert(pos < tree_size);
+				if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
 				{
-					fwrite(buf, sizeof(char), BUF_SIZE, decoded);
-					buf_idx = 0;
+					buf[buf_idx++] = tree[pos].letter;
+					total_read++;
+					if(buf_idx == BUF_SIZE) //TODO check why on long file decode is not equal to enc
+					{
+						fwrite(buf, sizeof(char), BUF_SIZE, decoded);
+						buf_idx = 0;
+					}
+					if(total_read == file_size)
+						break;
+					pos = 0;
 				}
-				if(total_read == file_size)
-					break;
-				pos = 0;
+				if (c & mask) // == 1
+				{
+					pos = tree[pos].one;
+				}
+				else
+				{
+					pos = tree[pos].zero;
+				}
+				assert(pos != -1);
+				mask = mask >> 1;
 			}
-			if (c & mask) // == 1
-			{
-				pos = tree[pos].one;
-			}
-			else
-			{
-				pos = tree[pos].zero;
-			}
-			assert(pos != -1);
-			mask = mask >> 1;
 		}
-		if(total_read == file_size)
+		if((total_read == file_size) || (readed != BUF_SIZE))
 		{
 			/* this code seems to be unnecessary:
 			if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
@@ -199,7 +205,7 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, in
 }
 
 //NULL pointer will be -1 index in array
-int put_to_array(element * prefix, Node * root, int up)
+int put_to_array(element * prefix, Node * root, int up) //, code* codes)
 {
 	int pos = idx;
 	idx++;
@@ -278,7 +284,8 @@ int main(int argc, char* argv[])
 		current->one = current->zero = NULL;
 		current->val = freq[i]; // this was to add randomization in tree
 		current->letter = i;
-		leaves[i] = nodes[i] = current;
+		leaves[i] = current;
+		nodes[i] = current;
 	}
 	qsort(nodes, SIZE, sizeof(Node_p), compare);
 
@@ -329,7 +336,7 @@ int main(int argc, char* argv[])
 	{
 		printf("%d ", nodes[i]->val);
 	}
-	get_inv_codes((code**) &codes, leaves);
+	//get_inv_codes((code**) &codes, leaves);
 	write_file(write, prefix, file_size);
 	if(argc == 4)
 	{
