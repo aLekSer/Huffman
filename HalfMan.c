@@ -230,6 +230,7 @@ int put_to_array(element * prefix, Node * root, int up)//, code* codes)
 int get_codes_from_array(element * prefix, code * codes)
 {
 	int i = 0, j = 0;
+    int found = 0;
 	int current, upper;
 	for(; j < SIZE; j++)
 	{
@@ -237,8 +238,16 @@ int get_codes_from_array(element * prefix, code * codes)
 		for(; i < 2 * SIZE; i++)
 		{
 			if(prefix[i].letter == j)
+            {
 				break;
+                found = 1;
+            }
 		}
+        if (!found)
+        {
+            continue;
+            codes[j].len = -1;
+        }
 		current = i;
 		codes[i].len = 0;
 		codes[i].seq = 0;
