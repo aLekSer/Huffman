@@ -1,0 +1,215 @@
+Дата компиляции и название файла
+__FILE__, __LINE__, __DATE__
+__func__
+printf("%s\n", __func__);
+
+#, ##, #elif, #pragma, #error
+
+int foo(a, p)
+  int a;
+  int *p; //так писали первобытные люди, в Verilog осталось
+{
+  return 0;
+}
+
+trigraph
+??=   #
+??(   [
+??'   ^
+??<   {
+
+
+if (i) // why is this always false???/
+  printf("Hello, World!\n");
+
+iso646.h 
+and, or
+
+
+C99
+gcc -std=c99
+__STDC_VERSION__ 1999901L
+63 initial characters in nternal identifier
+4095 chars in logical source line (509 in C89)
+all identifiers are case sensitive)
+  int i;
+  i++;
+  int j = i+2;
+
+new block scopes for selection and iteration statements
+for(int j = 0; j < 42; j++)
+{ printf("%d\n", j)}
+
+restrict //pointer
+// memory areas must not overlap
+void * memcpy(void * restrict s1, const void * restrict s2, size_t n);
+// 			^ 		^
+//блоки не пересекаются
+
+// memory areas may overlap
+memmove (void * s1, const void * s2, size_t n);
+
+int func(int n)
+{
+  char b[n]; // variable length C99
+}
+
+sizeof for VLA is run-time array
+
+int a = 20 //* comment */ 2
+  + 79;
+printf("COmpiled with std = c%d", a);
+
+Flexible array members
+struct name
+{
+  int namelen;
+  char namestr[];
+}
+
+struct name * makename(char * newname)
+{
+  struct name *ret = malloc(sizeof(struct name) + strlen(newname) + 1);
+    if (ret != NULL) {
+    ret-> namelen = strlen()new
+    strcpy(ret->namestr, newname);
+  }
+}
+
+complex numbers
+
+_Complex _Imaginary 
+complex.h complex and imaginary definitions
+2.0 * I
+
+float complex
+
+cimag
+creal
+carg
+conj
+ccosh, catanh
+// in C there are no mangling and func overriding
+
+digraph
+<: [
+:> ]
+<% {
+%: # // обрабатывается компилятором, а не препроцессором
+
+struct S{
+  int sa;
+  int sb
+}
+
+S bar = {argc, rand()}
+
+int a[4] = {[2] = 1};
+
+tgmath.h 
+type generic math
+
+remove implicit int
+static x = 0;
+volatile y = x;
+const i = 1000;
+register j;
+signed x;
+unsigned x;
+
+В С есть совместимость между разными компиляторами
+
+/* #include <stdlib.h> is missing */
+(char*) malloc(0x111) // подразумевается int instead of void *
+#include <stdbool.h>
+
+bool t = 8; // t == 1
+
+%A and %a for hex float
+inline functions
+long long int - 64 bit
+
+C11
+
+gcc -std=C11 pedantic some.c
+
+_Noreturn //пролог и эпилог функции
+longjmp()
+
+base pointer предыдущий указатель, добавляются аргументы в стек
+
+<stdalign.h>
+
+struct {
+char a; int b; //выравнивается по максимальному размеру переменной
+}
+alignof(char)
+alignas(16) struct S {
+  int  a;
+  char b;
+} s1;
+max_align_t == sizeof(long double)
+
+alligned_alloc(size_t alignement, size_t size)
+
+//cubic root
+#define cbrt(X) _Generic((X), long double: cbrtl, \
+default: cbrt, \
+float: cbrtf) (X)
+
+//anonymous union
+
+struct v{
+union {
+ struct{int i;};
+};
+int m;
+} t;
+t.i = 5
+
+static assert
+
+_Static_assert(offsetof(struct B. i) == 1, "B is not packed");
+
+O_EXCL:
+В posix fopen(filename, "wx")
+bound-checking interaces
+
+strcpy_s
+
+memset_s will overwrite the argument array
+printf_s
+- %n shall not appear
+
+if runtime-constraint violation does not attempt to produce further output
+
+printf("adb%n", I) // В *I 3
+
+
+
+qsort_s, bsearch_s
+
+concurrency mutex,  линкуются с pthread
+
+GCC extensions
+
+&&foo
+
+state machine
+foo:
+ i = 10;
+ goto end;
+
+end:
+ printf()
+
+nested functions
+
+double foo()
+{double z(z) {} }
+
+case ranges
+
+binary constants
+ i = 0b101010;
+
