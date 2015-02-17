@@ -205,7 +205,7 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, in
 }
 
 //NULL pointer will be -1 index in array
-int put_to_array(element * prefix, Node * root, int up) //, code* codes)
+int put_to_array(element * prefix, Node * root, int up)//, code* codes)
 {
 	int pos = idx;
 	idx++;
@@ -226,6 +226,43 @@ int put_to_array(element * prefix, Node * root, int up) //, code* codes)
 	else
 		prefix[pos].one = -1;
 	return pos;
+}
+int get_codes_from_array(element * prefix, code * codes)
+{
+	int i = 0, j = 0;
+	int current, upper;
+	for(; j < SIZE; j++)
+	{
+		//find leaf
+		for(; i < 2 * SIZE; i++)
+		{
+			if(prefix[i].letter == j)
+				break;
+		}
+		current = i;
+		codes[i].len = 0;
+		codes[i].seq = 0;
+		while(prefix[current].up != -1)
+		{
+			upper = prefix[current].up;
+			if(prefix[upper].one == current)
+			{
+				codes[i].seq = (codes[i].seq << 1) + 1;
+			}
+			else if(prefix[upper].zero == current)
+			{
+				codes[i].seq = codes[i].seq << 1;
+			}
+			codes[i].len ++;
+			//something goes wrong
+			if((prefix[upper].one != current) && (prefix[upper].zero != current))
+			{
+				abort();
+			}
+			current = prefix[current].up;
+		}
+	}
+	return 0;
 }
 int main(int argc, char* argv[])
 {
@@ -331,12 +368,13 @@ int main(int argc, char* argv[])
 	// this is a root node
 	nodes[0]->up = NULL;
 	put_to_array(prefix, nodes[0], -1);
+	get_codes_from_array(prefix, codes);
 	printf("\nSorted Nodes: \n");
 	for(i = 0; i < SIZE; i++)
 	{
 		printf("%d ", nodes[i]->val);
 	}
-	//get_inv_codes((code**) &codes, leaves);
+	//get_inv_codes(codes, leaves);
 	write_file(write, prefix, file_size);
 	if(argc == 4)
 	{
