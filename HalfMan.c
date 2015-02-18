@@ -20,7 +20,7 @@ typedef struct Node * Node_p;
 typedef struct {
 	int len;
 	uint64_t seq; //try to add array of long [8]
-//    uint64_t inv_seq;
+    uint64_t inv_seq; //fragments that uses this code be source of er
 } code;
 
 #define BUF_SIZE 1024
@@ -39,24 +39,35 @@ void append_file( FILE * write, FILE * read , code* codes)
 	while((ui = fgetc(read)) != EOF)
 	{
         c = (unsigned int) ui;
-		mask = 1;
+        i = (bits % 8);
         //TODO way to improve this give 20% increase on fibonachi sequences
-        /*if((bits%8 != 0) && (codes[c].len < ( 7 - (bits%8))))
+        if ((codes[c].len <= ( 8 - i)))
         {
+			if(i == 0)
+			{
+				++pointer;
+                if (pointer == BUF_SIZE)
+				{
+					fwrite(buf, sizeof(char), BUF_SIZE, write);
+                    memset(buf, BUF_SIZE, 0);
+					pointer = 0;
+				}
+			}
             buf[pointer] = (buf[pointer] << codes[c].len) | codes[c].inv_seq;
             bits = bits + codes[c].len;
         }
-        else*/
+        else
       {
+		mask = 1;
 		for (i = codes[c].len; i > 0 ; bits++, i--)
 		{
 			if((bits%8) == 0)
 			{
-				pointer++;
-				if (pointer == BUF_SIZE)
+				++pointer;
+                if (pointer == BUF_SIZE)
 				{
 					fwrite(buf, sizeof(char), BUF_SIZE, write);
-					memset(buf, 0, BUF_SIZE);
+                    memset(buf, BUF_SIZE, 0);
 					pointer = 0;
 				}
 			}
@@ -131,12 +142,12 @@ void get_inv_codes(code* arg_codes, Node** leaves)
 			}
 			current = current->up;
 		}
-        /*cur_seq = codes[i].seq;
+        cur_seq = codes[i].seq;
         for(j=0; j<codes[i].len; j++)
         {
            codes[i].inv_seq = (codes[i].inv_seq << 1) | ( cur_seq & 0x1);
            cur_seq = cur_seq >> 1;
-        }*/
+        }
 	}
 }
 int idx = 0;
