@@ -10,12 +10,13 @@
 #define SIZE 256
 #define MARK -1
 
-typedef struct Node* Node_p;
-typedef struct {
-	Node_p up, one, zero;
+typedef struct Node Node;
+struct Node {
+	struct Node * up, * one, *zero;
 	int val;
 	char letter;
-} Node;
+};
+typedef struct Node * Node_p;
 typedef struct {
 	int len;
 	uint64_t seq; //try to add array of long [8]
@@ -136,7 +137,7 @@ void read_prefix( FILE * read_file, element* tree, int* tree_size, uint64_t* fil
 	read_elements = fread(tree, sizeof(element), *tree_size, read_file);
 }
 
-void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, int file_size)
+void decode( FILE * encoded, element* tree, int tree_size, FILE * decoded, uint64_t file_size)
 {
 	int ui = 0;
 	unsigned int c = 0;
