@@ -63,12 +63,12 @@ void append_file( FILE * write, FILE * read , code* codes)
 	{
 		buf[pointer] = buf[pointer]  << (8 - (bits%8));
 	}
-	fwrite(buf, sizeof(char), pointer+1, write);
+	fwrite(buf, sizeof(char), pointer+2, write);
 	fclose(write);
 }
 
 typedef struct {
-	short int up, one, zero;
+	short int /*up,*/ one, zero;
 	//int val;
 	char letter;
 } element;
@@ -148,7 +148,12 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, in
 	int buf_idx = 0;
 	int i = 0, j = 0;
 	int pos = 0;
-	assert(tree[0].up == -1);
+	//assert(tree[0].up == -1);
+	if(file_size == 0)
+	{
+		fclose(decoded);
+		return;
+	}
 	while (1)
 	{
 		readed = fread(read_buf, sizeof(char), BUF_SIZE, encoded);
@@ -183,26 +188,19 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, in
 				assert(pos != -1);
 				mask = mask >> 1;
 			}
-		}
-		if((total_read == file_size) || (readed != BUF_SIZE))
-		{
-			/* this code seems to be unnecessary:
-			if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
+			if((total_read == file_size))
 			{
-				if(buf_idx == BUF_SIZE)
-				{
-					fwrite(buf, sizeof(char), BUF_SIZE, decoded);
-					buf_idx = 0;
-				}
-				buf[buf_idx++] = tree[pos].letter;
-				pos = 0;
-			}*/
+				break;
+			}
+		}
+		if((total_read == file_size))
+		{
 			break;
 		}
 	}
 	//fwrite(buf, sizeof(char), file_size % BUF_SIZE, decoded);
 	if (buf_idx != 0)
-		fwrite(buf, sizeof(char), buf_idx+1, decoded);
+		fwrite(buf, sizeof(char), buf_idx, decoded);
 	fclose(decoded);
 }
 
@@ -212,7 +210,6 @@ int put_to_array(element * prefix, Node * root, int up)//, code* codes)
 	int pos = idx;
 	idx++;
 	prefix[pos].letter = root->letter;
-	prefix[pos].up = up;
 
 	if(root->zero != NULL)
 	{
@@ -228,106 +225,6 @@ int put_to_array(element * prefix, Node * root, int up)//, code* codes)
 	else
 		prefix[pos].one = -1;
 	return pos;
-}
-//code with the same length - thus some problems with qsort exist
-int search_for_codes(element* prefix, code* codes, int l_idx, code* next)
-{
-	code * cur = malloc(sizeof(code));
-	code * cur_right = malloc(sizeof(code));
-	int i = 0;
-	uint64_t sequence = 0;
-	assert(idx < 2*SIZE);
-	if (next->seq == -1)
-	{
-		cur->len = 0;
-		cur->seq = 0;
-		cur_right->len = 0;
-		cur_right->seq = 0;
-	}
-	else
-	{
-		cur->len = next->len;
-		cur->seq = next->seq;
-		cur_right->len = next->len;
-		cur_right->seq = next->seq;
-	}
-
-	if((prefix[l_idx].one == -1) && (prefix[l_idx].zero == -1))
-	{
-		//invert code because we use inverted
-		for(i = 0; i < cur->len; i++)
-		{
-			sequence = sequence | (cur->seq & 0x1);
-			cur->seq = cur->seq >> 1;
-			sequence = sequence << 1;
-		}
-		cur->seq = sequence;
-		codes[prefix[l_idx].letter].seq = cur->seq;
-		codes[prefix[l_idx].letter].len = cur->len;
-	}
-	if(prefix[l_idx].zero != -1)
-	{
-		cur->len++;
-		cur->seq = cur->seq<<1;
-		search_for_codes(prefix, codes, prefix[l_idx].zero, cur);
-	}
-	if(prefix[l_idx].one != -1)
-	{
-		cur_right->len++;
-		cur_right->seq = (cur_right->seq<<1) + 1;
-		search_for_codes(prefix, codes, prefix[l_idx].one, cur_right);
-	}
-
-	free(cur);
-	free(cur_right);
-	return 0;
-}
-int get_codes_from_array(element * prefix, code * codes)
-{
-	int i = 0, j = 0;
-    int found = 0;
-	int current, upper;
-	for(j = 1; j < SIZE; j++)
-	{
-		found = 0;
-		//find leaf
-		for(i = 1; i < idx; i++)
-		{
-			if(prefix[i].letter == j)
-            {
-                found = 1;
-				break;
-            }
-		}
-        if (!found)
-        {
-            continue;
-            codes[j].len = -1;
-        }
-		current = i;
-		codes[i].len = 0;
-		codes[i].seq = 0;
-		while(prefix[current].up != -1)
-		{
-			upper = prefix[current].up;
-			if(prefix[upper].one == current)
-			{
-				codes[i].seq = (codes[i].seq << 1) + 1;
-			}
-			else if(prefix[upper].zero == current)
-			{
-				codes[i].seq = codes[i].seq << 1;
-			}
-			codes[i].len ++;
-			//something goes wrong
-			if((prefix[upper].one != current) && (prefix[upper].zero != current))
-			{
-				abort();
-			}
-			current = prefix[current].up;
-		}
-	}
-	return 0;
 }
 #define ARG_COMPRESS 1
 #define ARG_FILE 2
@@ -402,11 +299,18 @@ int main(int argc, char* argv[])
 			if(set)
 				nodes[i]->up = NULL;
 		}
+		// Empty file case
+		if(j==0)
+		{
+			j = 1;
+			nodes[0]->letter = 's';
+		}
 		//for one letter cases corner case
 		if(j==1)
 		{
 			current = malloc(sizeof(Node));
 			nodes[0]->up = (Node_p)current;
+			current->zero = NULL;
 			current->one = (Node_p)nodes[0];
 			nodes[0] = current;
 		}
@@ -459,7 +363,7 @@ int main(int argc, char* argv[])
 		append_file(write, read, codes2);
 		Free_Tree(&(nodes[0]));
     }
-    else
+    else /* if (to_encode) //for tests in VS */
     {
 		if(argc != 4)
 		{
