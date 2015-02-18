@@ -95,11 +95,13 @@ void get_inv_codes(code* arg_codes, Node** leaves)
 	int i = 0;
 	Node * current, * upper;
 	code* codes = arg_codes;
+	printf("Leaves\n");
 	for(; i < SIZE; i++)
 	{
 		codes[i].len = 0;
 		codes[i].seq = 0;
 		current = leaves[i];
+		printf("%x ", leaves[i]->letter);
 		while(current->up != NULL)
 		{
 			upper = current->up;
@@ -227,20 +229,74 @@ int put_to_array(element * prefix, Node * root, int up)//, code* codes)
 		prefix[pos].one = -1;
 	return pos;
 }
+//code with the same length - thus some problems with qsort exist
+int search_for_codes(element* prefix, code* codes, int l_idx, code* next)
+{
+	code * cur = malloc(sizeof(code));
+	code * cur_right = malloc(sizeof(code));
+	int i = 0;
+	uint64_t sequence = 0;
+	assert(idx < 2*SIZE);
+	if (next->seq == -1)
+	{
+		cur->len = 0;
+		cur->seq = 0;
+		cur_right->len = 0;
+		cur_right->seq = 0;
+	}
+	else
+	{
+		cur->len = next->len;
+		cur->seq = next->seq;
+		cur_right->len = next->len;
+		cur_right->seq = next->seq;
+	}
+
+	if((prefix[l_idx].one == -1) && (prefix[l_idx].zero == -1))
+	{
+		//invert code because we use inverted
+		for(i = 0; i < cur->len; i++)
+		{
+			sequence = sequence | (cur->seq & 0x1);
+			cur->seq = cur->seq >> 1;
+			sequence = sequence << 1;
+		}
+		cur->seq = sequence;
+		codes[prefix[l_idx].letter].seq = cur->seq;
+		codes[prefix[l_idx].letter].len = cur->len;
+	}
+	if(prefix[l_idx].zero != -1)
+	{
+		cur->len++;
+		cur->seq = cur->seq<<1;
+		search_for_codes(prefix, codes, prefix[l_idx].zero, cur);
+	}
+	if(prefix[l_idx].one != -1)
+	{
+		cur_right->len++;
+		cur_right->seq = (cur_right->seq<<1) + 1;
+		search_for_codes(prefix, codes, prefix[l_idx].one, cur_right);
+	}
+
+	free(cur);
+	free(cur_right);
+	return 0;
+}
 int get_codes_from_array(element * prefix, code * codes)
 {
 	int i = 0, j = 0;
     int found = 0;
 	int current, upper;
-	for(; j < SIZE; j++)
+	for(j = 1; j < SIZE; j++)
 	{
+		found = 0;
 		//find leaf
-		for(; i < 2 * SIZE; i++)
+		for(i = 1; i < idx; i++)
 		{
 			if(prefix[i].letter == j)
             {
-				break;
                 found = 1;
+				break;
             }
 		}
         if (!found)
@@ -282,12 +338,13 @@ int main(int argc, char* argv[])
 	int to_encode = 1;
 	unsigned int ui = 0;
 	Node *nodes[SIZE], *leaves[SIZE];
-	code codes[SIZE] = {0};
+	code codes[SIZE] = {{0}};
+	code codes2[SIZE] = {{0}};
 	uint64_t file_size = 0;
-	element prefix[2 * SIZE] = {0};
-	element dprefix[2 * SIZE] = {0};
+	element prefix[2 * SIZE] = {{0}};
+	element dprefix[2 * SIZE] = {{0}};
 	//element* tree = NULL; // possibly do malloc while decoding
-	size_t tree_size = 0;
+	int tree_size = 0;
 	int set = 0;
 	Node * current = NULL;
     if(argc == 4)
@@ -362,28 +419,56 @@ int main(int argc, char* argv[])
 	while(j != 1)
 	{
 		--j;
-		//possibly wrong & operator in &nodes[j-2], removed
 		if(j>=2)
-			qsort(nodes + j-2, 3, sizeof(Node_p), compare);
+			qsort(nodes, j+1, sizeof(Node_p), compare);
 		current = malloc(sizeof(Node));
-		nodes[j-1]->up = current;
-		nodes[j]->up = current;
+		nodes[j-1]->up = (Node_p)current;
+		nodes[j]->up = (Node_p)current;
 		current->val = nodes[j]->val + nodes[j-1]->val;
-		current->zero = nodes[j-1];
-		current->one = nodes[j];
+		current->zero = (Node_p)nodes[j];
+		current->one = (Node_p)nodes[j-1];
 		nodes[j-1] = current;
-		nodes[j]->val = MARK;
+		nodes[j] = NULL;//->val = MARK;
+		printf("Debug %d", ((Node*)nodes[j-1]->zero)->letter);
+		printf("\nIteration %d: \n", j);
+		for(i = 0; i < j; i++)
+		{
+			printf(" %d", nodes[i]->val);
+		}
 	}
 	// this is a root node
 	nodes[0]->up = NULL;
-	put_to_array(prefix, nodes[0], -1);
-	get_codes_from_array(prefix, codes);
 	printf("\nSorted Nodes: \n");
-	for(i = 0; i < SIZE; i++)
+	/*for(i = 0; i < SIZE; i++)
 	{
 		printf("%d ", nodes[i]->val);
+	}*/
+	put_to_array(prefix, nodes[0], -1);
+	code next;
+	next.seq = -1;
+	search_for_codes(prefix, codes, 0, &next);
+	//get_codes_from_array(prefix, codes);
+
+	printf("\nPrefix: \n");
+	for(i = 0; i < 2*SIZE; i++)
+	{
+		if (prefix[i].letter != 0)
+			printf("%d ",(char) prefix[i].letter, codes[i].len, codes[i].seq);
 	}
-	//get_inv_codes(codes, leaves);
+	printf("\nCodes: \n");
+	for(i = 0; i < SIZE; i++)
+	{
+		if (codes[i].len != 0)
+			printf("%c s%d %x ",(char) i, codes[i].len, codes[i].seq);
+	}
+	printf("\nCodes2: \n");
+	get_inv_codes(codes2, leaves);
+	for(i = 0; i < SIZE; i++)
+	{
+		if (codes2[i].len != 0)
+			printf("%c s%d  %x ",(char) i, codes2[i].len, codes2[i].seq);
+	}
+	printf("\n");
 	write_file(write, prefix, file_size);
 	if(argc == 4)
 	{
@@ -395,15 +480,9 @@ int main(int argc, char* argv[])
 	    read = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Tmp.txt", "rb");
 	    read_enc = fopen("D:\\working\\Small work for student\\HalfMan\\HalfMan\\Debug\\Encode.txt", "rb");
 	}
-	append_file(write, read, codes);
+	append_file(write, read, codes2);
 	read_prefix(read_enc, dprefix, &tree_size, & file_size);
 	decode(read_enc, dprefix, tree_size, write_dec, file_size);
-	printf("\nCodes: \n");
-	for(i = 0; i < SIZE; i++)
-	{
-		if (codes[i].len != 0)
-			printf("%c s %d %x ",(char) i, codes[i].len, codes[i].seq);
-	}
 	Free_Tree(&(nodes[0]));
 	return 0;
 }
