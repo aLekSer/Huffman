@@ -74,9 +74,9 @@ typedef struct {
 	char letter;
 } element;
 
-int compare(const Node ** left, const Node ** right)
+int compare(const void* left, const void* right)
 {
-	return ((*left)->val < (*right)->val) - ((*left)->val > (*right)->val);
+	return ((*(Node **)left)->val < (*(Node **)right)->val) - ((*(Node **)left)->val > (*(Node **)right)->val);
 }
 void build_tree(Node** sorted, int len) {}
 void Free_Tree(Node** this_node)
