@@ -20,6 +20,7 @@ typedef struct Node * Node_p;
 typedef struct {
 	int len;
 	uint64_t seq; //try to add array of long [8]
+//    uint64_t inv_seq;
 } code;
 
 #define BUF_SIZE 1024
@@ -37,8 +38,16 @@ void append_file( FILE * write, FILE * read , code* codes)
 		abort();
 	while((ui = fgetc(read)) != EOF)
 	{
-		c = (unsigned int) ui;
+        c = (unsigned int) ui;
 		mask = 1;
+        //TODO way to improve this give 20% increase on fibonachi sequences
+        /*if((bits%8 != 0) && (codes[c].len < ( 7 - (bits%8))))
+        {
+            buf[pointer] = (buf[pointer] << codes[c].len) | codes[c].inv_seq;
+            bits = bits + codes[c].len;
+        }
+        else*/
+      {
 		for (i = codes[c].len; i > 0 ; bits++, i--)
 		{
 			if((bits%8) == 0)
@@ -58,6 +67,7 @@ void append_file( FILE * write, FILE * read , code* codes)
 			}
 			mask = mask << 1;
 		}
+      }
 	}
 	// for code to be complete and starts from MSB
 	if((bits%8) != 0)
@@ -93,9 +103,10 @@ void Free_Tree(Node** this_node)
 }
 void get_inv_codes(code* arg_codes, Node** leaves)
 {
-	int i = 0;
+	int i = 0, j = 0;
 	Node * current, * upper;
 	code* codes = arg_codes;
+    uint64_t cur_seq = 0;
 	for(; i < SIZE; i++)
 	{
 		codes[i].len = 0;
@@ -120,6 +131,12 @@ void get_inv_codes(code* arg_codes, Node** leaves)
 			}
 			current = current->up;
 		}
+        /*cur_seq = codes[i].seq;
+        for(j=0; j<codes[i].len; j++)
+        {
+           codes[i].inv_seq = (codes[i].inv_seq << 1) | ( cur_seq & 0x1);
+           cur_seq = cur_seq >> 1;
+        }*/
 	}
 }
 int idx = 0;
