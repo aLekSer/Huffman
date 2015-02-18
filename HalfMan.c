@@ -95,21 +95,19 @@ void get_inv_codes(code* arg_codes, Node** leaves)
 	int i = 0;
 	Node * current, * upper;
 	code* codes = arg_codes;
-	printf("Leaves\n");
 	for(; i < SIZE; i++)
 	{
 		codes[i].len = 0;
 		codes[i].seq = 0;
 		current = leaves[i];
-		printf("%x ", leaves[i]->letter);
 		while(current->up != NULL)
 		{
 			upper = current->up;
-			if(((Node *)upper->one)->letter == current->letter)
+			if((Node *)upper->one == current)
 			{
 				codes[i].seq = (codes[i].seq << 1) + 1;
 			}
-			else if(((Node *)upper->zero)->letter == current->letter)
+			else if((Node *)upper->zero == current)
 			{
 				codes[i].seq = codes[i].seq << 1;
 			}
@@ -374,12 +372,6 @@ int main(int argc, char* argv[])
 			ui = (unsigned int) c;
 			freq[ui]++; file_size++;
 		}
-#ifdef DEBUG
-	for (i = 0; i < SIZE; i++)
-	{
-		printf("%x ", freq[i]);
-	}
-#endif
 	for(i = 0; i < SIZE; i++)
 	{
 		current = malloc(sizeof(Node));
@@ -392,19 +384,6 @@ int main(int argc, char* argv[])
 	}
 	qsort(nodes, SIZE, sizeof(Node_p), compare);
 
-#ifdef DEBUG
-	for(i = 0; i < file_size; i++)
-	{
-		printf("%d ", nodes[i]->val);
-	}
-#endif
-#ifdef DEBUG
-	printf("\nSorted Nodes: \n");
-	for(i = 0; i < file_size; i++)
-	{
-		printf("%d ", nodes[i]->val);
-	}
-#endif
 	j = SIZE;
 	for(i = 0; i < SIZE; i++)
 	{
@@ -429,24 +408,13 @@ int main(int argc, char* argv[])
 		current->one = (Node_p)nodes[j-1];
 		nodes[j-1] = current;
 		nodes[j] = NULL;//->val = MARK;
-		printf("Debug %d", ((Node*)nodes[j-1]->zero)->letter);
-		printf("\nIteration %d: \n", j);
-		for(i = 0; i < j; i++)
-		{
-			printf(" %d", nodes[i]->val);
-		}
 	}
 	// this is a root node
 	nodes[0]->up = NULL;
-	printf("\nSorted Nodes: \n");
-	/*for(i = 0; i < SIZE; i++)
-	{
-		printf("%d ", nodes[i]->val);
-	}*/
 	put_to_array(prefix, nodes[0], -1);
 	code next;
 	next.seq = -1;
-	search_for_codes(prefix, codes, 0, &next);
+	//search_for_codes(prefix, codes, 0, &next);
 	//get_codes_from_array(prefix, codes);
 
 	printf("\nPrefix: \n");
@@ -454,12 +422,6 @@ int main(int argc, char* argv[])
 	{
 		if (prefix[i].letter != 0)
 			printf("%d ",(char) prefix[i].letter, codes[i].len, codes[i].seq);
-	}
-	printf("\nCodes: \n");
-	for(i = 0; i < SIZE; i++)
-	{
-		if (codes[i].len != 0)
-			printf("%c s%d %x ",(char) i, codes[i].len, codes[i].seq);
 	}
 	printf("\nCodes2: \n");
 	get_inv_codes(codes2, leaves);
