@@ -21,7 +21,7 @@ typedef struct {
 	uint64_t seq; //try to add array of long [8]
 } code;
 
-#define BUF_SIZE 1025
+#define BUF_SIZE 1024
 //encode file
 void append_file( FILE * write, FILE * read , code* codes)
 {
@@ -201,7 +201,8 @@ void decode( FILE * encoded, element* tree, size_t tree_size, FILE * decoded, in
 		}
 	}
 	//fwrite(buf, sizeof(char), file_size % BUF_SIZE, decoded);
-	fwrite(buf, sizeof(char), buf_idx+1, decoded);
+	if (buf_idx != 0)
+		fwrite(buf, sizeof(char), buf_idx+1, decoded);
 	fclose(decoded);
 }
 
