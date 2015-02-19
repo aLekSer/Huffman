@@ -30,7 +30,9 @@ void append_file( FILE * write, FILE * read , code* codes)
 	int i = 0;
 	uint64_t bits = 0;
 	uint64_t mask = 1;
-	int pointer = -1;
+    uint64_t symbol = 0;
+    register char b = 0;
+	register int pointer = -1;
 	unsigned int c = 0; //possibly source of error
 	int ui = 0;
 	char buf[BUF_SIZE] = {0};
@@ -58,12 +60,16 @@ void append_file( FILE * write, FILE * read , code* codes)
         }
         else
       {
-		mask = 1;
-		for (i = codes[c].len; i > 0 ; bits++, i--)
+          symbol = codes[c].seq;
+            b = buf[pointer];
+          i = codes[c].len;
+		while (i)
 		{
 			if((bits%8) == 0)
 			{
+                buf[pointer] = b;
 				++pointer;
+                b = buf[pointer];
                 if (pointer == BUF_SIZE)
 				{
 					fwrite(buf, sizeof(char), BUF_SIZE, write);
@@ -71,13 +77,12 @@ void append_file( FILE * write, FILE * read , code* codes)
 					pointer = 0;
 				}
 			}
-			buf[pointer] = buf[pointer] << 1;
-			if(codes[c].seq & mask)
-			{
-				buf[pointer] = buf[pointer] | 1;
-			}
-			mask = mask << 1;
+			b = (b << 1) | (symbol & 0x1);
+			symbol = symbol >> 1;
+            bits ++;
+            i--;
 		}
+          buf[pointer] = b;
       }
 	}
 	// for code to be complete and starts from MSB
@@ -168,8 +173,8 @@ void read_prefix( FILE * read_file, element* tree, int* tree_size, uint64_t* fil
 void decode( FILE * encoded, element* tree, int tree_size, FILE * decoded, uint64_t file_size)
 {
 	int ui = 0;
-	unsigned int c = 0;
-	int mask = 1;
+	register unsigned char c = 0;
+	register unsigned char  mask = 1;
 	char buf[BUF_SIZE];
 	char read_buf[BUF_SIZE];
 	int readed;
@@ -190,9 +195,9 @@ void decode( FILE * encoded, element* tree, int tree_size, FILE * decoded, uint6
 		{
 			c = read_buf[j];
 			mask = 1<<7;
-			for (i = 0; i <8; i++)
+			while (mask)
 			{
-				assert(pos < tree_size);
+				//assert(pos < tree_size);
 				if ((tree[pos].zero == -1) && (tree[pos].one == -1)) // leaf found
 				{
 					buf[buf_idx++] = tree[pos].letter;
@@ -214,7 +219,7 @@ void decode( FILE * encoded, element* tree, int tree_size, FILE * decoded, uint6
 				{
 					pos = tree[pos].zero;
 				}
-				assert(pos != -1);
+				//assert(pos != -1);
 				mask = mask >> 1;
 			}
 			if((total_read == file_size))
